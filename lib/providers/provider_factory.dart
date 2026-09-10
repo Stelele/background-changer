@@ -11,6 +11,6 @@ PotdProvider defaultProviderFor(ProviderId id,
     case ProviderId.bing:
     case ProviderId.apod:
     case ProviderId.wikimedia:
-      throw UnimplementedError('added in later tasks');
+      throw const PotdException('provider not yet implemented');
   }
 }

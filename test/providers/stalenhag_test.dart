@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -52,5 +53,75 @@ void main() {
         client: MockClient((req) async => http.Response('oops', 500)),
         now: () => DateTime(2026, 9, 10));
     await expectLater(p.fetch(), throwsA(isA<PotdException>()));
+  });
+
+  // --- Fix 1: timeout ---
+
+  test('stalled request times out as PotdException', () async {
+    final neverCompletes = MockClient((_) async {
+      await Completer<void>().future; // never resolves
+      return http.Response('', 200);
+    });
+    final p = StalenhagProvider(
+      client: neverCompletes,
+      now: () => DateTime(2026, 9, 10),
+      timeout: const Duration(milliseconds: 20),
+    );
+    await expectLater(p.fetch(), throwsA(isA<PotdException>()));
+  });
+
+  // --- Fix 2: non-artwork images filtered ---
+
+  test('extractImagePaths filters karta and nyckel', () {
+    const html = '''
+    <a href="4k/svema_karta_big.jpg"></a>
+    <a href="4k/svema_nyckel_big.jpg"></a>
+    <a href="4k/svema_01_big.jpg"></a>
+    ''';
+    final paths = StalenhagProvider.extractImagePaths(html);
+    expect(paths, ['4k/svema_01_big.jpg']);
+  });
+
+  // --- Fix 3: image download failure ---
+
+  test('404 on image download throws PotdException', () async {
+    final html = await File(fixtureHtml).readAsString();
+    final client = MockClient((req) async {
+      if (req.url.path.endsWith('.jpg')) {
+        return http.Response('missing', 404);
+      }
+      return http.Response(html, 200);
+    });
+    final p = StalenhagProvider(
+        client: client, now: () => DateTime(2026, 9, 10));
+    await expectLater(p.fetch(), throwsA(isA<PotdException>()));
+  });
+
+  // --- Fix 4: misleading empty-body error message ---
+
+  test('non-200 image gives status-code error, empty body gives empty-body error', () async {
+    final html = await File(fixtureHtml).readAsString();
+
+    // 404 → status-code message
+    final client404 = MockClient((req) async {
+      if (req.url.path.endsWith('.jpg')) return http.Response('no', 404);
+      return http.Response(html, 200);
+    });
+    final p404 = StalenhagProvider(
+        client: client404, now: () => DateTime(2026, 9, 10));
+    await expectLater(p404.fetch(), throwsA(
+        isA<PotdException>().having((e) => e.reason, 'reason', contains('404'))));
+
+    // 200 but empty body → empty-body message
+    final clientEmpty = MockClient((req) async {
+      if (req.url.path.endsWith('.jpg')) {
+        return http.Response.bytes([], 200);
+      }
+      return http.Response(html, 200);
+    });
+    final pEmpty = StalenhagProvider(
+        client: clientEmpty, now: () => DateTime(2026, 9, 10));
+    await expectLater(pEmpty.fetch(), throwsA(
+        isA<PotdException>().having((e) => e.reason, 'reason', contains('empty'))));
   });
 }
