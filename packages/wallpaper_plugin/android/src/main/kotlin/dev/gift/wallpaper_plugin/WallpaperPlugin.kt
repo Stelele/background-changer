@@ -16,15 +16,21 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class WallpaperPlugin : FlutterPlugin, ActivityAware {
     private val channelId = "wallpaper_changer/wallpaper"
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val worker = Executors.newSingleThreadExecutor()
+    private var worker: ExecutorService = Executors.newSingleThreadExecutor()
+    @Volatile private var detached = false
     private var activity: Activity? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        detached = false
+        if (worker.isShutdown) {
+            worker = Executors.newSingleThreadExecutor()
+        }
         MethodChannel(binding.binaryMessenger, channelId).setMethodCallHandler { call, result ->
             when (call.method) {
                 "screenSize" -> {
@@ -39,6 +45,10 @@ class WallpaperPlugin : FlutterPlugin, ActivityAware {
                     }
                     val home = call.argument<Boolean>("home") ?: false
                     val lock = call.argument<Boolean>("lock") ?: false
+                    if (!home && !lock) {
+                        result.success(false)
+                        return@setMethodCallHandler
+                    }
                     val appContext = binding.applicationContext
                     worker.execute {
                         val ok = try {
@@ -47,7 +57,7 @@ class WallpaperPlugin : FlutterPlugin, ActivityAware {
                             Log.e("WallpaperPlugin", "set failed", t)
                             false
                         }
-                        mainHandler.post { result.success(ok) }
+                        mainHandler.post { if (!detached) result.success(ok) }
                     }
                 }
                 "notifyStale" -> {
@@ -73,7 +83,8 @@ class WallpaperPlugin : FlutterPlugin, ActivityAware {
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        // Channel handlers die with the engine's messenger; nothing to clean up.
+        detached = true
+        worker.shutdown()
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {

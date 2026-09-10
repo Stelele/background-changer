@@ -1,15 +1,8 @@
 # wallpaper_plugin
 
-A new Flutter plugin project.
+Local path-dependency plugin package. Its only purpose is carrying the Android
+`WallpaperPlugin` (channel `wallpaper_changer/wallpaper`) so that
+GeneratedPluginRegistrant registers it on every FlutterEngine — including the
+headless engine the `workmanager` plugin creates for background jobs.
 
-## Getting Started
-
-This project is a starting point for a Flutter
-[plug-in package](https://flutter.dev/to/develop-plugins),
-a specialized package that includes platform-specific implementation code for
-Android and/or iOS.
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
+All Dart-side access happens in the app via `lib/platform/wallpaper_api.dart`.
