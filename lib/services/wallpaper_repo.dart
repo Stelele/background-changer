@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path_provider/path_provider.dart';
+
 import '../models/potd_item.dart';
 import '../models/settings.dart';
 
@@ -8,6 +10,13 @@ class WallpaperRepo {
   final Directory baseDir;
 
   WallpaperRepo(this.baseDir);
+
+  /// Repo rooted at the app documents directory (used by main and the
+  /// background isolate, which share settings/history through this dir).
+  static Future<WallpaperRepo> openDefault() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return WallpaperRepo(dir);
+  }
 
   File get _settingsFile => File('${baseDir.path}/settings.json');
 
