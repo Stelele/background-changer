@@ -1,9 +1,8 @@
-import 'dart:async';
-
 import 'package:http/http.dart' as http;
 
 import '../models/potd_item.dart';
 import 'provider.dart';
+import 'provider_http.dart';
 
 class StalenhagProvider implements PotdProvider {
   final http.Client _client;
@@ -26,7 +25,7 @@ class StalenhagProvider implements PotdProvider {
 
   @override
   Future<PotdItem> fetch() async {
-    final res = await _get(Uri.parse('$baseUrl/'), 'homepage');
+    final res = await providerGet(_client, Uri.parse('$baseUrl/'), 'homepage', timeout);
     if (res.statusCode != 200) {
       throw PotdException('homepage http ${res.statusCode}');
     }
@@ -40,7 +39,7 @@ class StalenhagProvider implements PotdProvider {
         .inDays;
     final path = links[dayIndex % links.length];
     final imageUrl = '$baseUrl/$path';
-    final imgRes = await _get(Uri.parse(imageUrl), 'image');
+    final imgRes = await providerGet(_client, Uri.parse(imageUrl), 'image', timeout);
     if (imgRes.statusCode != 200) {
       throw PotdException('image http ${imgRes.statusCode}');
     }
@@ -64,18 +63,6 @@ class StalenhagProvider implements PotdProvider {
       ),
       bytes: imgRes.bodyBytes,
     );
-  }
-
-  /// GET with per-leg timeout/network error mapping, so every fetch failure
-  /// surfaces as a PotdException with a leg-specific reason.
-  Future<http.Response> _get(Uri url, String what) async {
-    try {
-      return await _client.get(url).timeout(timeout);
-    } on TimeoutException {
-      throw PotdException('$what timeout');
-    } on http.ClientException catch (e) {
-      throw PotdException('network ${e.message}');
-    }
   }
 
   /// Ordered, de-duplicated `4k/xxx_big.jpg` paths from the homepage html,

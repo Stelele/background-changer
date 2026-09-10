@@ -1,10 +1,10 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
 import '../models/potd_item.dart';
 import 'provider.dart';
+import 'provider_http.dart';
 
 class BingProvider implements PotdProvider {
   final http.Client _client;
@@ -24,7 +24,7 @@ class BingProvider implements PotdProvider {
 
   @override
   Future<PotdItem> fetch() async {
-    final res = await _get(Uri.parse(archiveUrl), 'archive');
+    final res = await providerGet(_client, Uri.parse(archiveUrl), 'archive', timeout);
     if (res.statusCode != 200) {
       throw PotdException('archive http ${res.statusCode}');
     }
@@ -47,7 +47,7 @@ class BingProvider implements PotdProvider {
       throw const PotdException('archive entry missing urlbase');
     }
     final imageUrl = 'https://www.bing.com${urlBase}_UHD.jpg';
-    final imgRes = await _get(Uri.parse(imageUrl), 'image');
+    final imgRes = await providerGet(_client, Uri.parse(imageUrl), 'image', timeout);
     if (imgRes.statusCode != 200) {
       throw PotdException('image http ${imgRes.statusCode}');
     }
@@ -70,17 +70,5 @@ class BingProvider implements PotdProvider {
       ),
       bytes: imgRes.bodyBytes,
     );
-  }
-
-  /// GET with per-leg timeout/network error mapping, so every fetch failure
-  /// surfaces as a PotdException with a leg-specific reason.
-  Future<http.Response> _get(Uri url, String what) async {
-    try {
-      return await _client.get(url).timeout(timeout);
-    } on TimeoutException {
-      throw PotdException('$what timeout');
-    } on http.ClientException catch (e) {
-      throw PotdException('network ${e.message}');
-    }
   }
 }
