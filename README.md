@@ -1,17 +1,35 @@
-# wallpaper_changer
+# Wallpaper Changer
 
-A new Flutter project.
+Flutter Android app that changes your wallpaper daily from the same sources as
+KDE Plasma's Picture of the Day plugin: Simon Stålenhag, Bing, NASA APOD, and
+Wikimedia Commons POTD.
 
-## Getting Started
+## Dev
 
-This project is a starting point for a Flutter application.
+    flutter pub get
+    flutter test
+    flutter analyze
+    flutter run
 
-A few resources to get you started if this is your first Flutter project:
+## Release signing (one-time setup)
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+1. Generate a keystore (keep it safe, it must never change):
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+       keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+2. Base64 it:
+
+       base64 -w0 upload-keystore.jks
+
+3. Add GitHub repo secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
+   `KEY_ALIAS`, `KEY_PASSWORD`.
+
+4. Bump `version:` in `pubspec.yaml`, commit, then tag:
+
+       git tag v0.1.0 && git push origin v0.1.0
+
+CI runs tests, builds, signs, and publishes the APK to a GitHub Release.
+
+## Design docs
+
+See `docs/superpowers/`.
