@@ -53,11 +53,14 @@ desktop.
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
+Pub deps: `http`, `image`, `path_provider`, `workmanager`. Stale-alarm notification is
+posted from Kotlin via the same MethodChannel (no notification plugin).
+
 | Unit | Responsibility | Depends on |
 |---|---|---|
 | `PotdProvider` (interface) | Fetch today's `PotdItem {title, author, infoUrl, imageUrl, bytes}` | — |
 | `StalenhagProvider` | Scrape static HTML for `4k/*_big.jpg` links; deterministic day-of-year rotation (desktop parity not required) | http |
-| `BingProvider` | HPImageArchive endpoint; request portrait file when target device is portrait | http |
+| `BingProvider` | HPImageArchive endpoint (UHD landscape; portrait handled by ImageFitter) | http |
 | `ApodProvider` | api.nasa.gov APOD (official API, DEMO_KEY with per-IP limits is fine for personal use) | http |
 | `WikimediaProvider` | Commons "PotD" via MediaWiki API | http |
 | `ImageFitter` | Transform bitmap per fit mode + screen aspect ratio | image |
@@ -72,7 +75,7 @@ WorkManager periodic job (~24h, constraint: network)
   1. provider.fetch()              ──fail─▶ keep wallpaper, backoff retry (30m→1h→4h)
   2. validate item                 (non-empty bytes + title + imageUrl, else = fail)
   3. dedupe                        (imageUrl same as current? → done, idempotent)
-  4. ImageFitter.transform()       (center-crop to screen AR; Bing native portrait skips crop)
+  4. ImageFitter.transform()       (center-crop to screen AR)
   5. WallpaperApi.apply()          (home / lock / both per setting)
   6. Repo.save()                   (image + metadata; trim recent ring to 14)
   7. cache age > 3 days?           ─▶ notification: "Provider looks broken — pick another"
@@ -102,6 +105,7 @@ stale alarm (ask lazily). No storage, no location, no internet permission surpri
 | `setBitmap` fails | Retry on next backoff; cache preserved |
 | Reboot / app swiped away | WorkManager persists jobs across reboots and process death |
 | Duplicate image for the day | Dedupe by URL; job exits successfully |
+| Provider returns video media (APOD/Wikimedia video days) | Treated as fetch failure; yesterday's wallpaper stays |
 
 ## 6. Development workflow — TDD
 
