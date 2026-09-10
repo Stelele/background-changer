@@ -32,12 +32,30 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _settings = widget.repo.loadSettings();
     _history = widget.repo.loadHistory();
+    // Spec §3: on app open, if the current wallpaper is older than today,
+    // run the refresh pipeline immediately (fresh install or missed day).
+    final appliedAt = widget.repo.currentAppliedAt()?.toLocal();
+    final now = DateTime.now();
+    final stale = appliedAt == null ||
+        appliedAt.year != now.year ||
+        appliedAt.month != now.month ||
+        appliedAt.day != now.day;
+    if (stale) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refresh();
+      });
+    }
   }
 
   Future<void> _save(Settings s) async {
+    final wifiChanged = s.wifiOnly != _settings.wifiOnly;
     setState(() => _settings = s);
     await widget.repo.saveSettings(s);
-    await widget.onSettingsChanged(s);
+    if (wifiChanged) {
+      await widget.onSettingsChanged(s);
+    }
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _refresh() async {
@@ -45,10 +63,12 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await widget.onRefresh();
     } finally {
-      setState(() {
-        _busy = false;
-        _history = widget.repo.loadHistory();
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _history = widget.repo.loadHistory();
+        });
+      }
     }
   }
 
@@ -74,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Image.file(
                   File(hero.imageFile.path),
                   fit: BoxFit.cover,
+                  cacheWidth: 1080,
                   errorBuilder: (_, _, _) => Container(color: Colors.grey),
                 ),
               ),
@@ -171,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 72,
                           width: 128,
                           fit: BoxFit.cover,
+                          cacheWidth: 256,
                           errorBuilder: (_, _, _) =>
                               Container(width: 128, color: Colors.grey),
                         ),

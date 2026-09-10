@@ -25,7 +25,7 @@ void main() {
                 imageUrl: 'https://img/1.jpg'),
             bytes: img.encodeJpg(img.Image(width: 16, height: 16)),
           ),
-          appliedAt: DateTime(2026, 9, 10),
+          appliedAt: DateTime.now(),
         ));
     // Large surface so the lazily-built ListView constructs all children
     // (default 800x600 viewport only builds the hero and clips the controls).
@@ -54,5 +54,59 @@ void main() {
     expect(find.text('Wi-Fi only'), findsOneWidget);
     expect(find.text('Test Art'), findsOneWidget);
     expect(find.byType(Image), findsWidgets);
+  });
+
+  testWidgets('auto-refreshes on open when no wallpaper applied yet',
+      (tester) async {
+    final tmp = (await tester
+        .runAsync(() => Directory.systemTemp.createTemp('ui_test2')))!;
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = WallpaperRepo(tmp); // empty — nothing applied
+    var refreshCalls = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: HomeScreen(
+        repo: repo,
+        onRefresh: () async {
+          refreshCalls++;
+          return true;
+        },
+        onSettingsChanged: (s) async {},
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(refreshCalls, 1);
+  });
+
+  testWidgets('does not auto-refresh when applied today', (tester) async {
+    final tmp = (await tester
+        .runAsync(() => Directory.systemTemp.createTemp('ui_test3')))!;
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = WallpaperRepo(tmp);
+    await tester.runAsync(() => repo.saveCurrent(
+          item: PotdItem(
+            meta: const PotdMeta(
+                title: 'Fresh',
+                author: 'A',
+                infoUrl: 'https://i',
+                imageUrl: 'https://img/fresh.jpg'),
+            bytes: img.encodeJpg(img.Image(width: 16, height: 16)),
+          ),
+          appliedAt: DateTime.now(),
+        ));
+    var refreshCalls = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: HomeScreen(
+        repo: repo,
+        onRefresh: () async {
+          refreshCalls++;
+          return true;
+        },
+        onSettingsChanged: (s) async {},
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(refreshCalls, 0);
   });
 }

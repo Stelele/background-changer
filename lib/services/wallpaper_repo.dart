@@ -54,7 +54,8 @@ class WallpaperRepo {
     };
     await File('${_historyDir.path}/$stamp.json')
         .writeAsString(jsonEncode(entry));
-    final tmp = File('${baseDir.path}/current.json.tmp');
+    final tmp = File(
+        '${baseDir.path}/current.${DateTime.now().microsecondsSinceEpoch}.tmp');
     await tmp.writeAsString(jsonEncode(entry));
     await tmp.rename(_currentFile.path);
     _trimHistory(14);
