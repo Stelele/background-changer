@@ -4,6 +4,7 @@ import 'apod.dart';
 import 'bing.dart';
 import 'provider.dart';
 import 'stalenhag.dart';
+import 'wikimedia.dart';
 
 PotdProvider defaultProviderFor(ProviderId id,
     {http.Client? client, DateTime Function()? now}) {
@@ -15,6 +16,6 @@ PotdProvider defaultProviderFor(ProviderId id,
     case ProviderId.apod:
       return ApodProvider(client: client);
     case ProviderId.wikimedia:
-      throw const PotdException('provider not yet implemented');
+      return WikimediaProvider(client: client, now: now);
   }
 }

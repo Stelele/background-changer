@@ -24,10 +24,8 @@ void main() {
         ['stalenhag', 'bing', 'apod', 'wikimedia']);
   });
 
-  test('unimplemented factory ids throw PotdException, not UnimplementedError', () {
-    for (final id in [ProviderId.wikimedia]) {
-      expect(() => defaultProviderFor(id), throwsA(isA<PotdException>()));
-    }
+  test('factory returns StalenhagProvider for stalenhag', () {
+    expect(defaultProviderFor(ProviderId.stalenhag).id, 'stalenhag');
   });
 
   test('factory returns BingProvider for bing', () {
@@ -36,5 +34,9 @@ void main() {
 
   test('factory returns ApodProvider for apod', () {
     expect(defaultProviderFor(ProviderId.apod).id, 'apod');
+  });
+
+  test('factory returns WikimediaProvider for wikimedia', () {
+    expect(defaultProviderFor(ProviderId.wikimedia).id, 'wikimedia');
   });
 }

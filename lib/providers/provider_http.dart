@@ -11,10 +11,11 @@ Future<http.Response> providerGet(
   http.Client client,
   Uri url,
   String what,
-  Duration timeout,
-) async {
+  Duration timeout, {
+  Map<String, String>? headers,
+}) async {
   try {
-    return await client.get(url).timeout(timeout);
+    return await client.get(url, headers: headers).timeout(timeout);
   } on TimeoutException {
     throw PotdException('$what timeout');
   } on http.ClientException catch (e) {
