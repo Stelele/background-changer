@@ -50,6 +50,15 @@ void main() {
         isFalse);
   });
 
+  test('setWallpaper throws Exception when reply is a non-bool', () async {
+    final api = MethodChannelWallpaperApi();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(WallpaperApi.channel, (call) async => 1);
+    await expectLater(
+        api.setWallpaper(Uint8List.fromList([9]), {ScreenTarget.home}),
+        throwsA(isA<Exception>()));
+  });
+
   test('setWallpaper throws when no targets selected', () async {
     final api = MethodChannelWallpaperApi();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

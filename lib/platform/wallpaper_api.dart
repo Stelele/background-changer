@@ -35,12 +35,15 @@ class MethodChannelWallpaperApi implements WallpaperApi {
     if (targets.isEmpty) {
       throw Exception('setWallpaper: no screen targets selected');
     }
-    final ok = await WallpaperApi.channel.invokeMethod<bool>('set', {
+    final reply = await WallpaperApi.channel.invokeMethod('set', {
       'bytes': jpegBytes,
       'home': targets.contains(ScreenTarget.home),
       'lock': targets.contains(ScreenTarget.lock),
     });
-    return ok ?? false;
+    if (reply != null && reply is! bool) {
+      throw Exception('setWallpaper reply not a bool');
+    }
+    return reply ?? false;
   }
 
   @override
