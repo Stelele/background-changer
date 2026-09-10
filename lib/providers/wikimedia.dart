@@ -78,14 +78,17 @@ class WikimediaProvider implements PotdProvider {
     String author = '';
     if (artistRaw is Map<String, dynamic>) {
       final html = artistRaw['html'];
+      // Decode entities with &amp; last so '&amp;lt;' yields the literal
+      // text '&lt;' instead of double-decoding to '<'.
       author = (html is String ? html : '')
           .replaceAll(RegExp(r'<[^>]*>'), '')
-          .replaceAll('&amp;', '&')
           .replaceAll('&quot;', '"')
           .replaceAll('&#39;', "'")
+          .replaceAll('&apos;', "'")
           .replaceAll('&lt;', '<')
           .replaceAll('&gt;', '>')
           .replaceAll('&nbsp;', ' ')
+          .replaceAll('&amp;', '&')
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
     } else if (artistRaw is String) {

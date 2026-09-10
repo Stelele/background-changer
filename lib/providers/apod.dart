@@ -34,6 +34,9 @@ class ApodProvider implements PotdProvider {
     } catch (_) {
       throw const PotdException('apod response not json');
     }
+    if (data.containsKey('error')) {
+      throw const PotdException('apod error response');
+    }
     if (data['media_type'] != 'image') {
       throw const PotdException('apod media is not an image');
     }
@@ -41,10 +44,20 @@ class ApodProvider implements PotdProvider {
     if (url is! String || url.isEmpty) {
       throw const PotdException('apod missing image url');
     }
+    // Prefer the sharper hdurl when present and safe; else fall back to url.
+    final hdurl = data['hdurl'];
+    var chosen = url;
+    if (hdurl is String && hdurl.isNotEmpty) {
+      final hdUri = Uri.tryParse(hdurl);
+      if (hdUri != null &&
+          (hdUri.scheme == 'http' || hdUri.scheme == 'https')) {
+        chosen = hdurl;
+      }
+    }
     // Uri.parse throws a raw FormatException on malformed input and the http
     // client throws ArgumentError on scheme-less urls — both would escape the
     // PotdException-only contract, so validate before parsing.
-    final uri = Uri.tryParse(url);
+    final uri = Uri.tryParse(chosen);
     if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
       throw const PotdException('apod invalid image url');
     }
@@ -76,11 +89,13 @@ class ApodProvider implements PotdProvider {
     return PotdItem(
       meta: PotdMeta(
         title: title is String ? title : 'APOD',
-        author: copyright is String ? copyright : '',
+        author: copyright is String
+            ? copyright.replaceAll(RegExp(r'\s+'), ' ').trim()
+            : '',
         infoUrl: yymmdd.isEmpty
             ? 'https://apod.nasa.gov/apod/'
             : 'https://apod.nasa.gov/apod/ap$yymmdd.html',
-        imageUrl: url,
+        imageUrl: chosen,
       ),
       bytes: b,
     );

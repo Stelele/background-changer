@@ -42,6 +42,15 @@ void main() {
     expect(item.meta.author, 'Ben & Jerry');
   });
 
+  test('decodes ampersand-encoded entities literally without double decode',
+      () async {
+    final body = (await File('test/fixtures/wikimedia.json').readAsString())
+        .replaceAll('Photo Person', 'A &amp;lt; B');
+    final item = await WikimediaProvider(
+        client: clientFor(body), now: () => DateTime(2026, 9, 10)).fetch();
+    expect(item.meta.author, 'A &lt; B');
+  });
+
   test('uses today date in endpoint url and sends user-agent', () async {
     Uri? seen;
     Map<String, String>? seenHeaders;

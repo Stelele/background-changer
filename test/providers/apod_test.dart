@@ -23,7 +23,7 @@ void main() {
     expect(item.meta.author, 'Hubble Heritage Team (NASA)');
     expect(item.meta.infoUrl, 'https://apod.nasa.gov/apod/ap260910.html');
     expect(item.meta.imageUrl,
-        'https://apod.nasa.gov/apod/image/2609/test_nebula.jpg');
+        'https://apod.nasa.gov/apod/image/2609/test_nebula_big.jpg');
     expect(item.bytes.toList(), [0xFF, 0xD8, 5, 5]);
   });
 
@@ -33,10 +33,42 @@ void main() {
         ApodProvider(client: clientFor(body)).fetch(), throwsA(isA<PotdException>()));
   });
 
+  test('falls back to url when hdurl is absent', () async {
+    final body = (await File('test/fixtures/apod.json').readAsString())
+        .replaceAll(RegExp('"hdurl":\\s*"[^"]*",'), '');
+    final item = await ApodProvider(client: clientFor(body)).fetch();
+    expect(item.meta.imageUrl,
+        'https://apod.nasa.gov/apod/image/2609/test_nebula.jpg');
+  });
+
+  test('falls back to url when hdurl is invalid', () async {
+    final body = (await File('test/fixtures/apod.json').readAsString())
+        .replaceAll(
+            'https://apod.nasa.gov/apod/image/2609/test_nebula_big.jpg',
+            ':::bad:::');
+    final item = await ApodProvider(client: clientFor(body)).fetch();
+    expect(item.meta.imageUrl,
+        'https://apod.nasa.gov/apod/image/2609/test_nebula.jpg');
+  });
+
   test('non-200 throws PotdException', () async {
-    final p = ApodProvider(
-        client: MockClient((req) async => http.Response('rate limited', 429)));
+    final p = ApodProvider(client: clientFor('rate limited', code: 429));
     await expectLater(p.fetch(), throwsA(isA<PotdException>()));
+  });
+
+  test('copyright whitespace is normalized', () async {
+    final body = (await File('test/fixtures/apod.json').readAsString())
+        .replaceAll('Hubble Heritage Team (NASA)', 'Ada\\n   Lovelace\\t&  Co');
+    final item = await ApodProvider(client: clientFor(body)).fetch();
+    expect(item.meta.author, 'Ada Lovelace & Co');
+  });
+
+  test('error json body throws PotdException with error reason', () async {
+    const body = '{"error":{"code":404}}';
+    await expectLater(
+        ApodProvider(client: clientFor(body)).fetch(),
+        throwsA(isA<PotdException>()
+            .having((e) => e.reason, 'reason', contains('error'))));
   });
 
   test('missing copyright becomes empty author', () async {
