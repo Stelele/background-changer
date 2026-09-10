@@ -15,12 +15,38 @@ void main() {
     expect(out.height, th);
   });
 
-  test('centerCrop never upscales beyond source quality', () {
+  test('centerCrop keeps small-source crop unscaled', () {
     final src = img.Image(width: 600, height: 400);
     final out = fitter.transform(src,
         targetWidth: tw, targetHeight: th, mode: FitMode.centerCrop);
     expect(out.height, 400);
     expect((out.width / out.height - tw / th).abs(), lessThan(0.01));
+  });
+
+  test('panorama is not mega-upscaled', () {
+    final src = img.Image(width: 8000, height: 400);
+    final out = fitter.transform(src,
+        targetWidth: tw, targetHeight: th, mode: FitMode.centerCrop);
+    expect(out.width, (400 * tw / th).round()); // 185: crop kept, no resize
+    expect(out.height, 400);
+  });
+
+  test('exif orientation baked before cropping', () {
+    final src = img.Image(width: 100, height: 40);
+    // orientation 6 = rotate 90 CW: baked dims become 40x100
+    src.exif.imageIfd.orientation = 6;
+    // asIs returns the image untouched apart from the entry bake, so the
+    // swapped dims prove the bake runs before the mode switch.
+    final asIs = fitter.transform(src,
+        targetWidth: 1, targetHeight: 1, mode: FitMode.asIs);
+    expect(asIs.width, 40);
+    expect(asIs.height, 100);
+    // On the baked 40x100 image, centerCrop to 20x50 matches aspect (0.4)
+    // and has pixel budget, so it resolves to the exact target size.
+    final out = fitter.transform(src,
+        targetWidth: 20, targetHeight: 50, mode: FitMode.centerCrop);
+    expect(out.width, 20);
+    expect(out.height, 50);
   });
 
   test('asIs returns the same image untouched', () {
