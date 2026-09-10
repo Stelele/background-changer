@@ -17,14 +17,24 @@ abstract class WallpaperApi {
 class MethodChannelWallpaperApi implements WallpaperApi {
   @override
   Future<Size> getScreenSize() async {
-    final r = await WallpaperApi.channel
-        .invokeMapMethod<String, dynamic>('screenSize');
-    return Size((r!['w'] as num).toDouble(), (r['h'] as num).toDouble());
+    final r = await WallpaperApi.channel.invokeMethod('screenSize');
+    if (r is! Map) {
+      throw Exception('screenSize reply not a map');
+    }
+    final w = r['w'];
+    final h = r['h'];
+    if (w is! num || h is! num) {
+      throw Exception('screenSize reply missing w/h');
+    }
+    return Size(w.toDouble(), h.toDouble());
   }
 
   @override
   Future<bool> setWallpaper(
       Uint8List jpegBytes, Set<ScreenTarget> targets) async {
+    if (targets.isEmpty) {
+      throw Exception('setWallpaper: no screen targets selected');
+    }
     final ok = await WallpaperApi.channel.invokeMethod<bool>('set', {
       'bytes': jpegBytes,
       'home': targets.contains(ScreenTarget.home),
