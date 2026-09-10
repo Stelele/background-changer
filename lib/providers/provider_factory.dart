@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 
+import 'bing.dart';
 import 'provider.dart';
 import 'stalenhag.dart';
 
@@ -9,6 +10,7 @@ PotdProvider defaultProviderFor(ProviderId id,
     case ProviderId.stalenhag:
       return StalenhagProvider(client: client, now: now);
     case ProviderId.bing:
+      return BingProvider(client: client);
     case ProviderId.apod:
     case ProviderId.wikimedia:
       throw const PotdException('provider not yet implemented');
