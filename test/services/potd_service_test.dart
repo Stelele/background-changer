@@ -60,14 +60,25 @@ PotdService makeService({
   required FakeApi api,
   required WallpaperRepo repo,
   DateTime Function()? now,
+  ImageFitter? fitter,
 }) =>
     PotdService(
       providerFor: (_) => provider,
       api: api,
       repo: repo,
-      fitter: ImageFitter(),
+      fitter: fitter ?? ImageFitter(),
       now: now ?? () => DateTime(2026, 9, 10),
     );
+
+class ExplodingFitter extends ImageFitter {
+  @override
+  img.Image transform(img.Image source,
+      {required int targetWidth,
+      required int targetHeight,
+      required FitMode mode}) {
+    throw RangeError('boom');
+  }
+}
 
 void main() {
   late Directory tmp;
@@ -126,6 +137,7 @@ void main() {
     expect(await svc.run(), RunOutcome.failed);
     expect(api.setCalls, 0);
     expect(repo.loadCurrentMeta(), isNull);
+    expect(api.staleCalls, 0);
   });
 
   test('stale cache + failure triggers notifyStale', () async {
@@ -145,6 +157,7 @@ void main() {
         repo: repo);
     expect(await svc.run(), RunOutcome.failed);
     expect(repo.loadCurrentMeta(), isNull);
+    expect(api.staleCalls, 0);
   });
 
   test('undecodable bytes are a failure', () async {
@@ -155,5 +168,27 @@ void main() {
     final svc = makeService(provider: FakeProvider(item: bad), api: api, repo: repo);
     expect(await svc.run(), RunOutcome.failed);
     expect(api.setCalls, 0);
+  });
+
+  test('fitter Error is contained to RunOutcome.failed', () async {
+    final svc = makeService(
+        provider: FakeProvider(item: imageItem('https://img/1.jpg')),
+        api: api,
+        repo: repo,
+        fitter: ExplodingFitter());
+    expect(await svc.run(), RunOutcome.failed);
+    expect(api.setCalls, 0);
+  });
+
+  test('concurrent runs serialize — applied once, second dedupes', () async {
+    final svc = makeService(
+        provider: FakeProvider(item: imageItem('https://img/1.jpg')),
+        api: api,
+        repo: repo);
+    final results = await Future.wait([svc.run(), svc.run()]);
+    expect(results.contains(RunOutcome.applied), isTrue);
+    expect(results.contains(RunOutcome.duplicate), isTrue);
+    expect(api.setCalls, 1);
+    expect(repo.loadHistory().length, 1);
   });
 }
