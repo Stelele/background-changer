@@ -48,10 +48,11 @@ class WikimediaProvider implements PotdProvider {
       throw const PotdException('no picture of the day');
     }
     final imgObj = image['image'];
-    final source = imgObj is Map<String, dynamic> ? imgObj['source'] : null;
-    if (source is! String || source.isEmpty) {
+    final rawSource = imgObj is Map<String, dynamic> ? imgObj['source'] : null;
+    if (rawSource is! String || rawSource.isEmpty) {
       throw const PotdException('no full-size source');
     }
+    final source = rawSource.split('?').first;
     final lower = source.toLowerCase();
     if (!lower.endsWith('.jpg') && !lower.endsWith('.jpeg') && !lower.endsWith('.png')) {
       throw const PotdException('commons media is not a still image');
@@ -79,6 +80,12 @@ class WikimediaProvider implements PotdProvider {
       final html = artistRaw['html'];
       author = (html is String ? html : '')
           .replaceAll(RegExp(r'<[^>]*>'), '')
+          .replaceAll('&amp;', '&')
+          .replaceAll('&quot;', '"')
+          .replaceAll('&#39;', "'")
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>')
+          .replaceAll('&nbsp;', ' ')
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
     } else if (artistRaw is String) {

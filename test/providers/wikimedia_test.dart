@@ -25,6 +25,23 @@ void main() {
     expect(item.bytes.toList(), [0xFF, 0xD8, 3, 3]);
   });
 
+  test('stores imageUrl without tracking query', () async {
+    final body = await File('test/fixtures/wikimedia.json').readAsString();
+    final item = await WikimediaProvider(
+        client: clientFor(body), now: () => DateTime(2026, 9, 10)).fetch();
+    expect(item.meta.imageUrl,
+        'https://upload.wikimedia.org/wikipedia/commons/a/ab/Some_Place.jpg');
+    expect(item.meta.imageUrl.contains('?'), isFalse);
+  });
+
+  test('decodes html entities in artist name', () async {
+    final body = (await File('test/fixtures/wikimedia.json').readAsString())
+        .replaceAll('Photo Person', 'Ben &amp; Jerry');
+    final item = await WikimediaProvider(
+        client: clientFor(body), now: () => DateTime(2026, 9, 10)).fetch();
+    expect(item.meta.author, 'Ben & Jerry');
+  });
+
   test('uses today date in endpoint url and sends user-agent', () async {
     Uri? seen;
     Map<String, String>? seenHeaders;
