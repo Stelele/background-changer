@@ -172,9 +172,23 @@ test/
 | WallpaperRepo | unit (temp dirs) | save/load roundtrip, ring trim at 14, settings defaults, stale detection |
 | PotdService | unit (fake provider/api) | happy path, fetch-fail keeps wallpaper, dedupe, stale alarm fires at >3d |
 | HomeScreen | widget | renders chips + today's item from faked service |
-| End-to-end | manual checklist | set home/lock/both; reboot; overnight doze; airplane mode recovery; Wi-Fi-only respected; stale notification |
+| End-to-end | emulator + adb (agentic) | set home/lock/both; reboot; overnight doze; airplane mode recovery; Wi-Fi-only respected; stale notification |
 
-## 10. Manual QA checklist (pre-release)
+## 10. Emulator QA via adb (pre-release)
+
+End-to-end scenarios unit/widget tests can't reach are verified **agentically** on an
+Android emulator (`emulator` + `adb`) — the agent drives install, input, and device
+state, then asserts outcomes. Complex scenarios (doze, clock shifts) use adb device
+controls:
+
+| Control | adb mechanism |
+|---|---|
+| Install / launch | `adb install`, `adb shell am start` |
+| Reboot | `adb reboot` (then wait-for-device) |
+| Network kill/restore | `adb shell svc wifi disable/enable`, `svc data` or emulator console `network speed 0` |
+| Clock shift (stale test) | `adb root && adb shell date @<epoch>` (Google APIs emulator image) |
+| Doze | `adb shell dumpsys deviceidle force-idle` / `step` |
+| Assert wallpaper changed | `adb shell dumpsys wallpaper` bitmap dims changed + app cache/logcat markers |
 
 ```
 □ fresh install → first run sets today's wallpaper without interaction beyond launch
@@ -182,6 +196,9 @@ test/
 □ reboot: next day's change still happens
 □ airplane mode at job time: wallpaper preserved, applies when back online
 □ provider switch takes effect next refresh
-□ stale provider (point at bad URL) triggers notification after 3 days (clock-shifted test)
+□ stale provider (point at bad URL) triggers notification after 3 days (clock-shifted via adb)
 □ APK from CI installs over previous release version (signature check)
 ```
+
+These scenarios run as scripted agent sessions before each tagged release; outcomes are
+recorded in the release notes commit.
