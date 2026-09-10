@@ -33,6 +33,7 @@ class WallpaperRepo {
       {required PotdItem item, required DateTime appliedAt}) async {
     _historyDir.createSync(recursive: true);
     final stamp = appliedAt
+        .toUtc()
         .toIso8601String()
         .replaceAll(RegExp(r'[-:]'), '')
         .split('.')
@@ -40,11 +41,13 @@ class WallpaperRepo {
     await File('${_historyDir.path}/$stamp.jpg').writeAsBytes(item.bytes);
     final entry = {
       ..._metaJson(item.meta),
-      'appliedAt': appliedAt.toIso8601String(),
+      'appliedAt': appliedAt.toUtc().toIso8601String(),
     };
     await File('${_historyDir.path}/$stamp.json')
         .writeAsString(jsonEncode(entry));
-    await _currentFile.writeAsString(jsonEncode(entry));
+    final tmp = File('${baseDir.path}/current.json.tmp');
+    await tmp.writeAsString(jsonEncode(entry));
+    await tmp.rename(_currentFile.path);
     _trimHistory(14);
   }
 
@@ -113,6 +116,14 @@ class WallpaperRepo {
       final img = File(f.path.replaceFirst(RegExp(r'\.json$'), '.jpg'));
       if (img.existsSync()) img.deleteSync();
       if (f.existsSync()) f.deleteSync();
+    }
+    final sidecarPaths = sidecars.map((f) => f.path).toSet();
+    for (final f in _historyDir.listSync()) {
+      if (f is! File || !f.path.endsWith('.jpg')) continue;
+      final sidecar = f.path.replaceFirst(RegExp(r'\.jpg$'), '.json');
+      if (!sidecarPaths.contains(sidecar) && !File(sidecar).existsSync()) {
+        f.deleteSync();
+      }
     }
   }
 
