@@ -429,6 +429,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "15.3.0"
+  wallpaper_plugin:
+    dependency: "direct main"
+    description:
+      path: "packages/wallpaper_plugin"
+      relative: true
+    source: path
+    version: "0.0.1"
   web:
     dependency: transitive
     description:
