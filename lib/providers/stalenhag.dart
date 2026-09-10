@@ -26,43 +26,55 @@ class StalenhagProvider implements PotdProvider {
 
   @override
   Future<PotdItem> fetch() async {
+    final res = await _get(Uri.parse('$baseUrl/'), 'homepage');
+    if (res.statusCode != 200) {
+      throw PotdException('homepage http ${res.statusCode}');
+    }
+    final links = extractImagePaths(res.body);
+    if (links.isEmpty) throw const PotdException('no images found in html');
+    // Calendar-day index since Jan 1, normalized to UTC so the rotation is
+    // deterministic regardless of the host timezone / DST.
+    final today = _now();
+    final dayIndex = DateTime.utc(today.year, today.month, today.day)
+        .difference(DateTime.utc(today.year, 1, 1))
+        .inDays;
+    final path = links[dayIndex % links.length];
+    final imageUrl = '$baseUrl/$path';
+    final imgRes = await _get(Uri.parse(imageUrl), 'image');
+    if (imgRes.statusCode != 200) {
+      throw PotdException('image http ${imgRes.statusCode}');
+    }
+    final b = imgRes.bodyBytes;
+    if (b.isEmpty) {
+      throw const PotdException('image empty body');
+    }
+    if (b.length < 2 || b[0] != 0xFF || b[1] != 0xD8) {
+      throw const PotdException('image not jpeg');
+    }
+    final name = path
+        .split('/')
+        .last
+        .replaceFirst(RegExp(r'_big\.jpg$'), '');
+    return PotdItem(
+      meta: PotdMeta(
+        title: 'Simon Stålenhag — $name',
+        author: 'Simon Stålenhag',
+        infoUrl: baseUrl,
+        imageUrl: imageUrl,
+      ),
+      bytes: imgRes.bodyBytes,
+    );
+  }
+
+  /// GET with per-leg timeout/network error mapping, so every fetch failure
+  /// surfaces as a PotdException with a leg-specific reason.
+  Future<http.Response> _get(Uri url, String what) async {
     try {
-      final res = await _client.get(Uri.parse('$baseUrl/')).timeout(timeout);
-      if (res.statusCode != 200) {
-        throw PotdException('homepage http ${res.statusCode}');
-      }
-      final links = extractImagePaths(res.body);
-      if (links.isEmpty) throw const PotdException('no images found in html');
-      // Calendar-day index since Jan 1, normalized to UTC so the rotation is
-      // deterministic regardless of the host timezone / DST.
-      final today = _now();
-      final dayIndex = DateTime.utc(today.year, today.month, today.day)
-          .difference(DateTime.utc(today.year, 1, 1))
-          .inDays;
-      final path = links[dayIndex % links.length];
-      final imageUrl = '$baseUrl/$path';
-      final imgRes = await _client.get(Uri.parse(imageUrl)).timeout(timeout);
-      if (imgRes.statusCode != 200) {
-        throw PotdException('image http ${imgRes.statusCode}');
-      }
-      if (imgRes.bodyBytes.isEmpty) {
-        throw const PotdException('image empty body');
-      }
-      final name = path
-          .split('/')
-          .last
-          .replaceFirst(RegExp(r'_big\.jpg$'), '');
-      return PotdItem(
-        meta: PotdMeta(
-          title: 'Simon Stålenhag — $name',
-          author: 'Simon Stålenhag',
-          infoUrl: baseUrl,
-          imageUrl: imageUrl,
-        ),
-        bytes: imgRes.bodyBytes,
-      );
+      return await _client.get(url).timeout(timeout);
     } on TimeoutException {
-      throw const PotdException('timeout');
+      throw PotdException('$what timeout');
+    } on http.ClientException catch (e) {
+      throw PotdException('network ${e.message}');
     }
   }
 

@@ -24,51 +24,63 @@ class BingProvider implements PotdProvider {
 
   @override
   Future<PotdItem> fetch() async {
+    final res = await _get(Uri.parse(archiveUrl), 'archive');
+    if (res.statusCode != 200) {
+      throw PotdException('archive http ${res.statusCode}');
+    }
+    Map<String, dynamic> data;
     try {
-      final res = await _client.get(Uri.parse(archiveUrl)).timeout(timeout);
-      if (res.statusCode != 200) {
-        throw PotdException('archive http ${res.statusCode}');
-      }
-      Map<String, dynamic> data;
-      try {
-        data = jsonDecode(res.body) as Map<String, dynamic>;
-      } catch (_) {
-        throw const PotdException('archive response not json');
-      }
-      final images = data['images'];
-      if (images is! List || images.isEmpty) {
-        throw const PotdException('archive has no images');
-      }
-      if (images.first is! Map<String, dynamic>) {
-        throw const PotdException('archive entry malformed');
-      }
-      final img = images.first as Map<String, dynamic>;
-      final urlBase = img['urlbase'];
-      if (urlBase is! String || urlBase.isEmpty) {
-        throw const PotdException('archive entry missing urlbase');
-      }
-      final imageUrl = 'https://www.bing.com${urlBase}_UHD.jpg';
-      final imgRes = await _client.get(Uri.parse(imageUrl)).timeout(timeout);
-      if (imgRes.statusCode != 200) {
-        throw PotdException('image http ${imgRes.statusCode}');
-      }
-      if (imgRes.bodyBytes.isEmpty) {
-        throw const PotdException('image empty body');
-      }
-      return PotdItem(
-        meta: PotdMeta(
-          // `is String` guards rather than `as String?` casts: a malformed
-          // non-string field degrades to a fallback instead of escaping as a
-          // raw TypeError.
-          title: img['title'] is String ? img['title'] as String : 'Bing image of the day',
-          author: img['copyright'] is String ? img['copyright'] as String : '',
-          infoUrl: 'https://www.bing.com/',
-          imageUrl: imageUrl,
-        ),
-        bytes: imgRes.bodyBytes,
-      );
+      data = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw const PotdException('archive response not json');
+    }
+    final images = data['images'];
+    if (images is! List || images.isEmpty) {
+      throw const PotdException('archive has no images');
+    }
+    if (images.first is! Map<String, dynamic>) {
+      throw const PotdException('archive entry malformed');
+    }
+    final img = images.first as Map<String, dynamic>;
+    final urlBase = img['urlbase'];
+    if (urlBase is! String || urlBase.isEmpty) {
+      throw const PotdException('archive entry missing urlbase');
+    }
+    final imageUrl = 'https://www.bing.com${urlBase}_UHD.jpg';
+    final imgRes = await _get(Uri.parse(imageUrl), 'image');
+    if (imgRes.statusCode != 200) {
+      throw PotdException('image http ${imgRes.statusCode}');
+    }
+    final b = imgRes.bodyBytes;
+    if (b.isEmpty) {
+      throw const PotdException('image empty body');
+    }
+    if (b.length < 2 || b[0] != 0xFF || b[1] != 0xD8) {
+      throw const PotdException('image not jpeg');
+    }
+    return PotdItem(
+      meta: PotdMeta(
+        // `is String` guards rather than `as String?` casts: a malformed
+        // non-string field degrades to a fallback instead of escaping as a
+        // raw TypeError.
+        title: img['title'] is String ? img['title'] as String : 'Bing image of the day',
+        author: img['copyright'] is String ? img['copyright'] as String : '',
+        infoUrl: 'https://www.bing.com/',
+        imageUrl: imageUrl,
+      ),
+      bytes: imgRes.bodyBytes,
+    );
+  }
+
+  /// GET with per-leg timeout/network error mapping, so every fetch failure
+  /// surfaces as a PotdException with a leg-specific reason.
+  Future<http.Response> _get(Uri url, String what) async {
+    try {
+      return await _client.get(url).timeout(timeout);
     } on TimeoutException {
-      throw const PotdException('timeout');
+      throw PotdException('$what timeout');
+    } on http.ClientException catch (e) {
+      throw PotdException('network ${e.message}');
     }
   }
 }

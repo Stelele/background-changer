@@ -10,7 +10,7 @@ const fixtureHtml = 'test/fixtures/stalenhag.html';
 
 http.Client clientThat(String html) => MockClient((req) async {
       if (req.url.path.endsWith('.jpg')) {
-        return http.Response.bytes([9, 9, 9], 200);
+        return http.Response.bytes([0xFF, 0xD8, 9, 9], 200);
       }
       return http.Response(html, 200);
     });
@@ -21,7 +21,7 @@ void main() {
     final p = StalenhagProvider(
         client: clientThat(html), now: () => DateTime(2026, 9, 10));
     final item = await p.fetch();
-    expect(item.bytes, [9, 9, 9]);
+    expect(item.bytes, [0xFF, 0xD8, 9, 9]);
     expect(item.meta.author, 'Simon Stålenhag');
     expect(item.meta.imageUrl,
         startsWith('https://www.simonstalenhag.se/4k/'));
@@ -123,5 +123,31 @@ void main() {
         client: clientEmpty, now: () => DateTime(2026, 9, 10));
     await expectLater(pEmpty.fetch(), throwsA(
         isA<PotdException>().having((e) => e.reason, 'reason', contains('empty'))));
+  });
+
+  test('network failure throws PotdException', () async {
+    final p = StalenhagProvider(
+        client: MockClient((req) async => throw http.ClientException('offline')),
+        now: () => DateTime(2026, 9, 10));
+    await expectLater(
+        p.fetch(),
+        throwsA(isA<PotdException>()
+            .having((e) => e.reason, 'reason', contains('network'))));
+  });
+
+  test('non-jpeg image body throws PotdException', () async {
+    final html = await File(fixtureHtml).readAsString();
+    final client = MockClient((req) async {
+      if (req.url.path.endsWith('.jpg')) {
+        return http.Response.bytes([9, 9, 9], 200);
+      }
+      return http.Response(html, 200);
+    });
+    final p = StalenhagProvider(
+        client: client, now: () => DateTime(2026, 9, 10));
+    await expectLater(
+        p.fetch(),
+        throwsA(isA<PotdException>()
+            .having((e) => e.reason, 'reason', contains('jpeg'))));
   });
 }
