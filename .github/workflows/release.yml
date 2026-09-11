@@ -5,5 +5,12 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - name: Fail fast with clear message if signing secrets missing
+        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
+        run: |
+          echo "::error::KEYSTORE_BASE64 secret is not set."
+          exit 1
       - run: echo ok
