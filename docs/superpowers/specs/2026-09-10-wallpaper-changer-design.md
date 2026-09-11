@@ -26,7 +26,7 @@ desktop.
 | Behavior | Auto daily rotation; manual "refresh now" on app open if stale |
 | Screens | User-configurable: Home / Lock / Both (default Both) |
 | Devices | Independent; no cross-device sync |
-| Fit mode | **Center-crop** default on portrait phones; As-is default on tablets; Blur-pad available; per-device setting |
+| Fit mode | **Center-crop** (orientation-agnostic square of side max(screenW, screenH)) default on portrait phones; As-is default on tablets; Blur-pad available (also square); per-device setting |
 | UI | Single screen: hero preview, provider chips, target/fit dropdowns, recent strip |
 | Workflow | Test-driven development throughout |
 | CI | GitHub Actions: test+verify on push/PR; release on `v*` tags |
@@ -63,7 +63,7 @@ posted from Kotlin via the same MethodChannel (no notification plugin).
 | `BingProvider` | HPImageArchive endpoint (UHD landscape; portrait handled by ImageFitter) | http |
 | `ApodProvider` | api.nasa.gov APOD (official API, DEMO_KEY with per-IP limits is fine for personal use) | http |
 | `WikimediaProvider` | Commons "PotD" via MediaWiki API | http |
-| `ImageFitter` | Transform bitmap per fit mode + screen aspect ratio | image |
+| `ImageFitter` | Transform bitmap per fit mode; crops/composites are orientation-agnostic squares (side = max screen dim) so rotation never letterboxes | image |
 | `WallpaperRepo` | Settings persistence; image+metadata cache; 14-item recent ring | filesystem |
 | `WallpaperApi` (platform channel) | Kotlin: `WallpaperManager.setBitmap` with `FLAG_SYSTEM`/`FLAG_LOCK`; WorkManager registration | Kotlin |
 | `PotdService` | Orchestrate fetch → validate → dedupe → fit → set → cache; stale alarm | all above |

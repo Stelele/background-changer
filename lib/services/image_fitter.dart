@@ -27,33 +27,29 @@ class ImageFitter {
     }
   }
 
+  /// Orientation-agnostic square cover-crop.
+  ///
+  /// A square of side max(tw, th) lets the launcher show the center strip in
+  /// portrait and the center band in landscape — both pixel-perfect from a
+  /// single bitmap, so rotating never produces black bars or stretched crops.
   img.Image _centerCrop(img.Image src, int tw, int th) {
-    final srcAspect = src.width / src.height;
-    final targetAspect = tw / th;
-    int cw, ch;
-    if (srcAspect > targetAspect) {
-      ch = src.height;
-      cw = (ch * targetAspect).round();
-    } else {
-      cw = src.width;
-      ch = (cw / targetAspect).round();
-    }
-    final x = (src.width - cw) ~/ 2;
-    final y = (src.height - ch) ~/ 2;
-    var out = img.copyCrop(src, x: x, y: y, width: cw, height: ch);
+    final targetSide = math.max(tw, th);
+    final cropSide = math.min(targetSide, math.min(src.width, src.height));
+    final x = (src.width - cropSide) ~/ 2;
+    final y = (src.height - cropSide) ~/ 2;
+    var out = img.copyCrop(src, x: x, y: y, width: cropSide, height: cropSide);
     const maxUpscale = 2.5;
-    final cropPx = cw * ch;
-    final upscale = math.max(tw / cw, th / ch);
-    // Resize to the exact target only when the source has enough pixels
-    // overall AND the required upscale from the crop is modest; otherwise
-    // keep the crop and let the OS scale it.
-    if (tw * th <= src.width * src.height &&
-        cropPx > 0 &&
+    final upscale = targetSide / cropSide;
+    // Resize to the exact target side only when the source has enough pixels
+    // overall AND the required upscale is modest; otherwise keep the crop and
+    // let the OS scale it.
+    if (cropSide > 0 &&
+        targetSide * targetSide <= src.width * src.height &&
         upscale <= maxUpscale) {
       out = img.copyResize(
         out,
-        width: tw,
-        height: th,
+        width: targetSide,
+        height: targetSide,
         interpolation: img.Interpolation.average,
       );
     }
@@ -61,16 +57,17 @@ class ImageFitter {
   }
 
   img.Image _blurPad(img.Image src, int tw, int th) {
-    final bg = img.gaussianBlur(_coverTo(src, tw, th), radius: 16);
+    final side = math.max(tw, th);
+    final bg = img.gaussianBlur(_coverTo(src, side, side), radius: 16);
     const darken = 0.45;
     for (final p in bg) {
       p.r = (p.r * darken).round().clamp(0, 255);
       p.g = (p.g * darken).round().clamp(0, 255);
       p.b = (p.b * darken).round().clamp(0, 255);
     }
-    final fg = _containTo(src, tw, th);
+    final fg = _containTo(src, side, side);
     img.compositeImage(bg, fg,
-        dstX: (tw - fg.width) ~/ 2, dstY: (th - fg.height) ~/ 2);
+        dstX: (side - fg.width) ~/ 2, dstY: (side - fg.height) ~/ 2);
     return bg;
   }
 

@@ -45,6 +45,21 @@ back to HOME              → mRotation=ROTATION_0   (portrait again)
   in-app landscape screenshot not captured (wallpaper not visible behind the
   opaque activity).
 
+## S7 follow-up — square-crop hardening (implemented)
+
+User requested the landscape edge case be hardened rather than documented.
+`ImageFitter` now produces **square** bitmaps (side = max(screenW, screenH))
+for center-crop and blur-pad: portrait launchers show the center strip,
+landscape launchers the center band — both pixel-perfect from one bitmap,
+no black bars.
+
+- Unit tests pin the geometry (12 fitter tests, incl. center-strip content
+  check and budget/upscale-cap cases); suite: 93 passing.
+- Emulator re-verified: fresh install set the square wallpaper
+  (`Wallpaper set completion` in logcat; portrait home renders correctly;
+  qa_s7_square_set_portrait.png). WallpaperManager accepted the square and
+  stored it with its own parallax headroom (mWidth=4800 mHeight=2400).
+
 
 ## S3 — WorkManager registration + headless path
 
