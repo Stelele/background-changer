@@ -17,6 +17,34 @@
 | S4 | Airplane-mode resilience | ✅ PASS | Airplane on: no crash, UI renders cached wallpaper; airplane off: NOT_METERED Wi-Fi restored, WorkManager constraint machinery re-arms |
 | S5 | Stale notification (clock +4d, forced failure) | ✅ PASS | `stale` channel notification posted: "No new wallpaper from Simon Stålenhag for 3 days — open the app and pick another source." |
 | S6 | Wi-Fi-only constraint | ✅ PASS | dumpsys constraint line verbatim: `Capabilities: NOT_METERED&INTERNET&...` (UNMETERED = Wi-Fi only honored) |
+| S7 | Screen rotation (added post-review) | ✅ PASS (see note) | Phone home launcher forces ROTATION_0 regardless of user_rotation — portrait-fitted wallpaper always displayed in its crop orientation; rotation mechanism itself verified working (in-app ROTATION_90) |
+
+## S7 — Screen rotation (follow-up check)
+
+Question: does a portrait-fitted (center-cropped 1080×2400) wallpaper degrade when
+the device rotates to landscape?
+
+Findings on API 36 phone emulator:
+
+```
+user_rotation=1 at HOME   → mRotation=ROTATION_0   (Launcher3 blocks home rotation)
+user_rotation=1 in APP    → mRotation=ROTATION_90  (display rotates fine: 2400×1080)
+back to HOME              → mRotation=ROTATION_0   (portrait again)
+```
+
+- The wallpaper is only ever visible on **home + lock**; both are portrait-locked
+  on phone-class devices, so the portrait crop is always shown correctly.
+- At set time we query `maximumWindowMetrics.bounds`, so on landscape-natural
+  devices (tablets) the crop is produced for the display's real orientation.
+- Residual edge case: launchers that DO rotate the home screen (some OEMs /
+  large-screen setups) will re-crop a portrait bitmap in landscape — system-side
+  center zoom, degraded but not broken. Mitigation option if ever needed:
+  center-crop to a max(w,h)×max(w,h) square (pixel-perfect both ways, ~2× bytes).
+  Not implemented — YAGNI for current target devices.
+- Evidence: docs/superpowers/qa/qa_s7_rotation_portrait.png (home after set);
+  in-app landscape screenshot not captured (wallpaper not visible behind the
+  opaque activity).
+
 
 ## S3 — WorkManager registration + headless path
 
