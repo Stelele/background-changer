@@ -1,0 +1,22 @@
+{
+  "tfa": {},
+  "mostread": {},
+  "image": {
+    "title": "File:Some Place.jpg",
+    "thumbnail": {
+      "source": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Some_Place.jpg/640px-Some_Place.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "width": 640,
+      "height": 427
+    },
+    "image": {
+      "source": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Some_Place.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "width": 4000,
+      "height": 2667
+    },
+    "file_page": "https://commons.wikimedia.org/wiki/File:Some_Place.jpg",
+    "artist": {
+      "html": "<a href=\"https://example.com/p\" >Photo Person</a>"
+    }
+  },
+  "news": []
+}
