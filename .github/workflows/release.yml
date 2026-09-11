@@ -1,38 +1,9 @@
-name: release
+name: release-bisect
 on:
   push:
     tags: ['v*']
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-      - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test
-      - run: flutter analyze packages/wallpaper_plugin
-      - name: Fail fast with clear message if signing secrets missing
-        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
-        run: |
-          echo "::error::KEYSTORE_BASE64 secret is not set. Generate a keystore (see README) and add repo secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD."
-          exit 1
-      - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
-      - name: Write key.properties
-        run: |
-          cat > android/key.properties <<EOF
-          storeFile=app/upload-keystore.jks
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          EOF
-      - run: flutter build apk --release
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: build/app/outputs/flutter-apk/app-release.apk
-          generate_release_notes: true
+      - run: echo ok
