@@ -13,6 +13,9 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
       final repo = await WallpaperRepo.openDefault();
+      // Hourly chain: bail out cheaply — no provider fetch, no network —
+      // when today's wallpaper is already applied in the device timezone.
+      if (_appliedTodayLocal(repo)) return true;
       final service = PotdService(
         providerFor: (id) => defaultProviderFor(id),
         api: MethodChannelWallpaperApi(),
@@ -25,4 +28,13 @@ void callbackDispatcher() {
       return false;
     }
   });
+}
+
+/// True once per local day: appliedAt is stored as UTC, but "today" is what
+/// the user sees, so compare against the start of the local day.
+bool _appliedTodayLocal(WallpaperRepo repo) {
+  final at = repo.currentAppliedAt();
+  if (at == null) return false;
+  final now = DateTime.now();
+  return at.isAfter(DateTime(now.year, now.month, now.day));
 }

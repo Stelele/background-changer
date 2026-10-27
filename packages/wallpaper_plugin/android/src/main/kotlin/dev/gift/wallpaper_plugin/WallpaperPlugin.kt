@@ -5,12 +5,17 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.WallpaperManager
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.graphics.Point
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -74,6 +79,32 @@ class WallpaperPlugin : FlutterPlugin, ActivityAware {
                         act.requestPermissions(
                             arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1
                         )
+                    }
+                    result.success(null)
+                }
+                "isIgnoringBatteryOptimizations" -> {
+                    val pm = binding.applicationContext
+                        .getSystemService(Context.POWER_SERVICE) as PowerManager
+                    result.success(
+                        pm.isIgnoringBatteryOptimizations(binding.applicationContext.packageName)
+                    )
+                }
+                "requestIgnoreBatteryOptimizations" -> {
+                    val act = activity
+                    if (act != null) {
+                        try {
+                            val pm = act.getSystemService(Context.POWER_SERVICE) as PowerManager
+                            if (!pm.isIgnoringBatteryOptimizations(act.packageName)) {
+                                act.startActivity(
+                                    Intent(
+                                        Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                        Uri.parse("package:" + act.packageName)
+                                    )
+                                )
+                            }
+                        } catch (t: Throwable) {
+                            Log.w("WallpaperPlugin", "battery exemption request failed", t)
+                        }
                     }
                     result.success(null)
                 }
