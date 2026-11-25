@@ -40,6 +40,7 @@ dependencies:
   workmanager: ^0.10.10
   wallpaper_plugin:
     path: packages/wallpaper_plugin
+  material_ui: ^1.11.1
 
 dev_dependencies:
   flutter_test:
